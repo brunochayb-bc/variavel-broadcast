@@ -1,0 +1,5 @@
+{
+  "name": "Calculadora de Metas Trimestral",
+  "description": "Calculadora de atingimento de metas trimestrais com visualização em termômetro e cálculo de múltiplos salariais.",
+  "requestFramePermissions": []
+}

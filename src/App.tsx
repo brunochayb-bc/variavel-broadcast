@@ -1,0 +1,274 @@
+import { useState, useMemo, useEffect } from 'react';
+import { Target, TrendingUp, DollarSign, Info, Calculator, Wallet, PartyPopper } from 'lucide-react';
+import GaugeChart from './components/GaugeChart';
+import { motion, AnimatePresence } from 'motion/react';
+import confetti from 'canvas-confetti';
+
+interface Multiples {
+  monthly: number;
+  quarterly: number;
+}
+
+const RULES = [
+  { range: "Abaixo de 74,99%", min: 0, max: 0.7499, monthly: 0, quarterly: 0, color: "bg-red-500/20 text-red-400" },
+  { range: "75% - 89,99%", min: 0.75, max: 0.8999, monthly: 0.5, quarterly: 1.5, color: "bg-orange-500/20 text-orange-400" },
+  { range: "90% - 99,99%", min: 0.90, max: 0.9999, monthly: 0.75, quarterly: 2.25, color: "bg-yellow-500/20 text-yellow-400" },
+  { range: "100% - 109,99%", min: 1.00, max: 1.0999, monthly: 1, quarterly: 3, color: "bg-lime-500/20 text-lime-400" },
+  { range: "110% - 119,99%", min: 1.10, max: 1.1999, monthly: 1.25, quarterly: 3.75, color: "bg-green-500/20 text-green-400" },
+  { range: "Acima de 120%", min: 1.20, max: Infinity, monthly: 1.5, quarterly: 4.5, color: "bg-emerald-500/20 text-emerald-400" },
+];
+
+export default function App() {
+  const [goal, setGoal] = useState<number>(100000.00);
+  const [actual, setActual] = useState<number>(95000.00);
+  const [baseSalary, setBaseSalary] = useState<number>(5000.00);
+
+  const attainment = useMemo(() => {
+    if (goal <= 0) return 0;
+    return actual / goal;
+  }, [goal, actual]);
+
+  const multiples = useMemo((): Multiples => {
+    const rule = RULES.find(r => attainment >= r.min && attainment <= r.max);
+    if (rule) return { monthly: rule.monthly, quarterly: rule.quarterly };
+    if (attainment >= 1.20) return { monthly: 1.5, quarterly: 4.5 };
+    return { monthly: 0, quarterly: 0 };
+  }, [attainment]);
+
+  const variablePay = useMemo(() => {
+    return baseSalary * multiples.quarterly;
+  }, [baseSalary, multiples.quarterly]);
+
+  const currentRule = useMemo(() => {
+    return RULES.find(r => attainment >= r.min && attainment <= r.max) || RULES[RULES.length - 1];
+  }, [attainment]);
+
+  // Confetti effect when reaching 100% or more
+  useEffect(() => {
+    if (attainment >= 1.0) {
+      const duration = 3 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+      }, 250);
+
+      return () => clearInterval(interval);
+    }
+  }, [attainment >= 1.0]); // Trigger only when crossing the 100% threshold
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-emerald-500/30">
+      {/* Header */}
+      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+              <Calculator className="text-black w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="font-bold text-lg tracking-tight">Calculadora de Metas Trimestral</h1>
+              <p className="text-xs text-zinc-500 font-mono uppercase tracking-wider">Performance Engine v1.2</p>
+            </div>
+          </div>
+          <div className="hidden md:flex items-center gap-6 text-xs font-mono text-zinc-500 uppercase tracking-widest">
+            <span>Status: Online</span>
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Inputs & Gauge */}
+        <div className="lg:col-span-7 space-y-8">
+          {/* Input Card */}
+          <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center gap-2 mb-6">
+              <TrendingUp className="w-5 h-5 text-emerald-500" />
+              <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Parâmetros de Entrada</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Salário Base (R$)</label>
+                <div className="relative">
+                  <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={baseSalary}
+                    onChange={(e) => setBaseSalary(Number(e.target.value))}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-emerald-500 transition-colors font-mono text-lg"
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Meta Trimestral (R$)</label>
+                <div className="relative">
+                  <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={goal}
+                    onChange={(e) => setGoal(Number(e.target.value))}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-emerald-500 transition-colors font-mono text-lg"
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Valor Realizado (R$)</label>
+                <div className="relative">
+                  <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={actual}
+                    onChange={(e) => setActual(Number(e.target.value))}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-emerald-500 transition-colors font-mono text-lg"
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Gauge Card */}
+          <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-50" />
+            
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-emerald-500" />
+                <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Visualização de Atingimento</h2>
+              </div>
+              <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter flex items-center gap-2 ${currentRule.color}`}>
+                {attainment >= 1.0 && <PartyPopper className="w-3 h-3" />}
+                {currentRule.range}
+              </div>
+            </div>
+
+            <GaugeChart value={attainment} />
+          </section>
+        </div>
+
+        {/* Right Column: Results & Rules */}
+        <div className="lg:col-span-5 space-y-8">
+          {/* Multiples Card */}
+          <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+            {attainment >= 1.0 && (
+              <div className="absolute top-0 right-0 p-2">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="bg-emerald-500 text-black p-1 rounded-full"
+                >
+                  <PartyPopper className="w-4 h-4" />
+                </motion.div>
+              </div>
+            )}
+            <div className="flex items-center gap-2 mb-6">
+              <DollarSign className="w-5 h-5 text-emerald-500" />
+              <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Múltiplos Salariais</h2>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={attainment + baseSalary}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-4"
+                >
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
+                    <span className="text-zinc-500 text-sm font-medium">Múltiplo Mensal</span>
+                    <span className="text-2xl font-bold text-emerald-400 font-mono">{multiples.monthly}x</span>
+                  </div>
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex items-center justify-between ring-1 ring-emerald-500/30">
+                    <span className="text-zinc-500 text-sm font-medium">Múltiplo Trimestral</span>
+                    <span className="text-3xl font-bold text-emerald-400 font-mono">{multiples.quarterly}x</span>
+                  </div>
+                  
+                  <div className="mt-6 pt-6 border-t border-zinc-800">
+                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-5 text-center">
+                      <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Variável Estimado (Trimestre)</p>
+                      <p className="text-4xl font-black text-emerald-400 font-mono">
+                        {formatCurrency(variablePay)}
+                      </p>
+                      <p className="text-[10px] text-zinc-600 mt-2 italic">
+                        Cálculo: {formatCurrency(baseSalary)} × {multiples.quarterly}x
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </section>
+
+          {/* Rules Table Card */}
+          <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center gap-2 mb-6">
+              <Info className="w-5 h-5 text-emerald-500" />
+              <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Grades de Múltiplos Salariais</h2>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead>
+                  <tr className="text-zinc-500 border-b border-zinc-800">
+                    <th className="pb-2 font-medium">Atingimento</th>
+                    <th className="pb-2 font-medium text-center">Mensal</th>
+                    <th className="pb-2 font-medium text-center">Trim.</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/50">
+                  {RULES.map((rule, idx) => (
+                    <tr 
+                      key={idx} 
+                      className={`transition-colors ${attainment >= rule.min && attainment <= rule.max ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-400'}`}
+                    >
+                      <td className="py-2">{rule.range}</td>
+                      <td className="py-2 text-center">{rule.monthly}</td>
+                      <td className="py-2 text-center">{rule.quarterly}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="max-w-7xl mx-auto px-4 py-8 border-t border-zinc-800 mt-12">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-zinc-500 text-[10px] font-mono uppercase tracking-widest">
+          <p>© 2026 Performance Analytics System</p>
+          <div className="flex gap-6">
+            <a href="#" className="hover:text-emerald-500 transition-colors">Documentation</a>
+            <a href="#" className="hover:text-emerald-500 transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-emerald-500 transition-colors">Support</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
