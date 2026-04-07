@@ -39,6 +39,14 @@ export default function App() {
     return baseSalary * multiples.quarterly;
   }, [baseSalary, multiples.quarterly]);
 
+  const dsr = useMemo(() => {
+    return variablePay * 0.1923;
+  }, [variablePay]);
+
+  const totalVariable = useMemo(() => {
+    return variablePay + dsr;
+  }, [variablePay, dsr]);
+
   const currentRule = useMemo(() => {
     return RULES.find(r => attainment >= r.min && attainment <= r.max) || RULES[RULES.length - 1];
   }, [attainment]);
@@ -209,13 +217,30 @@ export default function App() {
                   </div>
                   
                   <div className="mt-6 pt-6 border-t border-zinc-800">
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-5 text-center">
-                      <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Variável Estimado (Trimestre)</p>
-                      <p className="text-4xl font-black text-emerald-400 font-mono">
-                        {formatCurrency(variablePay)}
-                      </p>
+                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-5 text-center space-y-4">
+                      <div>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Variável Estimado (Trimestre)</p>
+                        <p className="text-3xl font-bold text-zinc-300 font-mono">
+                          {formatCurrency(variablePay)}
+                        </p>
+                      </div>
+
+                      <div className="bg-emerald-500/10 rounded-lg py-2 px-4 inline-block border border-emerald-500/30">
+                        <p className="text-[10px] text-emerald-500 uppercase tracking-widest font-bold">DSR Estimado (19,23%)</p>
+                        <p className="text-xl font-bold text-emerald-400 font-mono">
+                          + {formatCurrency(dsr)}
+                        </p>
+                      </div>
+
+                      <div className="pt-2">
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Total Previsto</p>
+                        <p className="text-4xl font-black text-emerald-400 font-mono">
+                          {formatCurrency(totalVariable)}
+                        </p>
+                      </div>
+
                       <p className="text-[10px] text-zinc-600 mt-2 italic">
-                        Cálculo: {formatCurrency(baseSalary)} × {multiples.quarterly}x
+                        Base: {formatCurrency(baseSalary)} × {multiples.quarterly}x
                       </p>
                     </div>
                   </div>
