@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Target, TrendingUp, DollarSign, Info, Calculator, Wallet, PartyPopper } from 'lucide-react';
+import { Target, TrendingUp, DollarSign, Info, Calculator, Wallet, PartyPopper, CheckCircle2, XCircle } from 'lucide-react';
 import GaugeChart from './components/GaugeChart';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
+import { NumericFormat } from 'react-number-format';
 
 interface Multiples {
   monthly: number;
@@ -22,11 +23,13 @@ export default function App() {
   const [goal, setGoal] = useState<number>(100000.00);
   const [actual, setActual] = useState<number>(95000.00);
   const [baseSalary, setBaseSalary] = useState<number>(5000.00);
+  const [visitsMet, setVisitsMet] = useState<boolean>(false);
 
   const attainment = useMemo(() => {
-    if (goal <= 0) return 0;
-    return actual / goal;
-  }, [goal, actual]);
+    const visitsWeight = visitsMet ? 0.25 : 0;
+    const financialWeight = goal > 0 ? (actual / goal) * 0.75 : 0;
+    return visitsWeight + financialWeight;
+  }, [goal, actual, visitsMet]);
 
   const multiples = useMemo((): Multiples => {
     const rule = RULES.find(r => attainment >= r.min && attainment <= r.max);
@@ -51,9 +54,15 @@ export default function App() {
     return RULES.find(r => attainment >= r.min && attainment <= r.max) || RULES[RULES.length - 1];
   }, [attainment]);
 
-  // Confetti effect when reaching 100% or more
+  // Confetti and Sound effect when reaching 100% or more
   useEffect(() => {
     if (attainment >= 1.0) {
+      // Play Bell Sound
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(err => console.log('Audio playback blocked or failed:', err));
+
+      // Confetti logic
       const duration = 3 * 1000;
       const animationEnd = Date.now() + duration;
       const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
@@ -74,7 +83,7 @@ export default function App() {
 
       return () => clearInterval(interval);
     }
-  }, [attainment >= 1.0]); // Trigger only when crossing the 100% threshold
+  }, [attainment >= 1.0]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -91,7 +100,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="font-bold text-lg tracking-tight">Calculadora de Metas Trimestral</h1>
-              <p className="text-xs text-zinc-500 font-mono uppercase tracking-wider">Performance Engine v1.2</p>
+              <p className="text-xs text-zinc-500 font-mono uppercase tracking-wider">Performance Engine v1.3</p>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-6 text-xs font-mono text-zinc-500 uppercase tracking-widest">
@@ -111,48 +120,69 @@ export default function App() {
               <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Parâmetros de Entrada</h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Salário Base (R$)</label>
+                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Salário Base</label>
                 <div className="relative">
                   <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                  <input
-                    type="number"
-                    step="0.01"
+                  <NumericFormat
                     value={baseSalary}
-                    onChange={(e) => setBaseSalary(Number(e.target.value))}
+                    onValueChange={(values) => setBaseSalary(values.floatValue || 0)}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={2}
+                    fixedDecimalScale
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-emerald-500 transition-colors font-mono text-lg"
-                    placeholder="0,00"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Meta Trimestral (R$)</label>
+                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Meta de Visitas (25%)</label>
+                <button
+                  onClick={() => setVisitsMet(!visitsMet)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                    visitsMet 
+                      ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' 
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-500'
+                  }`}
+                >
+                  <span className="font-medium text-sm">Atingiu a meta de visitas?</span>
+                  {visitsMet ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Meta Financeira (75%)</label>
                 <div className="relative">
                   <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                  <input
-                    type="number"
-                    step="0.01"
+                  <NumericFormat
                     value={goal}
-                    onChange={(e) => setGoal(Number(e.target.value))}
+                    onValueChange={(values) => setGoal(values.floatValue || 0)}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={2}
+                    fixedDecimalScale
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-emerald-500 transition-colors font-mono text-lg"
-                    placeholder="0,00"
                   />
                 </div>
               </div>
               
               <div className="space-y-2">
-                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Valor Realizado (R$)</label>
+                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Realizado Financeiro</label>
                 <div className="relative">
                   <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                  <input
-                    type="number"
-                    step="0.01"
+                  <NumericFormat
                     value={actual}
-                    onChange={(e) => setActual(Number(e.target.value))}
+                    onValueChange={(values) => setActual(values.floatValue || 0)}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={2}
+                    fixedDecimalScale
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-emerald-500 transition-colors font-mono text-lg"
-                    placeholder="0,00"
                   />
                 </div>
               </div>
@@ -239,9 +269,10 @@ export default function App() {
                         </p>
                       </div>
 
-                      <p className="text-[10px] text-zinc-600 mt-2 italic">
-                        Base: {formatCurrency(baseSalary)} × {multiples.quarterly}x
-                      </p>
+                      <div className="text-[10px] text-zinc-600 mt-2 italic space-y-1">
+                        <p>Base: {formatCurrency(baseSalary)} × {multiples.quarterly}x</p>
+                        <p>Composição: {visitsMet ? "25% Visitas" : "0% Visitas"} + {((actual/goal)*75).toFixed(1)}% Financeiro</p>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
