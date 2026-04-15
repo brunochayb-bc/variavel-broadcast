@@ -20,16 +20,28 @@ const RULES = [
 ];
 
 export default function App() {
-  const [goal, setGoal] = useState<number>(100000.00);
-  const [actual, setActual] = useState<number>(95000.00);
-  const [baseSalary, setBaseSalary] = useState<number>(5000.00);
+  const [goal, setGoal] = useState<number>(50000.00);
+  const [actual, setActual] = useState<number>(40000.00);
+  const [baseSalary, setBaseSalary] = useState<number>(7000.00);
   const [visitsMet, setVisitsMet] = useState<boolean>(false);
 
   const attainment = useMemo(() => {
-    const visitsWeight = visitsMet ? 0.25 : 0;
-    const financialWeight = goal > 0 ? (actual / goal) * 0.75 : 0;
-    return visitsWeight + financialWeight;
+    const financialAttainment = goal > 0 ? (actual / goal) : 0;
+    
+    // Rule: Visits only count if financial attainment >= 75%
+    const visitsEligible = financialAttainment >= 0.75;
+    const visitsWeight = (visitsEligible && visitsMet) ? 0.25 : 0;
+    
+    return financialAttainment + visitsWeight;
   }, [goal, actual, visitsMet]);
+
+  const financialAttainmentPercent = useMemo(() => {
+    return goal > 0 ? (actual / goal) : 0;
+  }, [goal, actual]);
+
+  const visitsEligible = useMemo(() => {
+    return financialAttainmentPercent >= 0.75;
+  }, [financialAttainmentPercent]);
 
   const multiples = useMemo((): Multiples => {
     const rule = RULES.find(r => attainment >= r.min && attainment <= r.max);
@@ -122,7 +134,7 @@ export default function App() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Salário Base</label>
+                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Salário Base Mensal</label>
                 <div className="relative">
                   <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <NumericFormat
@@ -139,22 +151,34 @@ export default function App() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Meta de Visitas (25%)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Meta de Visitas Trimestre (25%)</label>
+                  {!visitsEligible && (
+                    <span className="text-[10px] text-red-500 font-bold uppercase flex items-center gap-1">
+                      <Info className="w-3 h-3" /> Bloqueado (Fin. {"<"} 75%)
+                    </span>
+                  )}
+                </div>
                 <button
-                  onClick={() => setVisitsMet(!visitsMet)}
+                  onClick={() => visitsEligible && setVisitsMet(!visitsMet)}
+                  disabled={!visitsEligible}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
-                    visitsMet 
-                      ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' 
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-500'
+                    !visitsEligible
+                      ? 'bg-zinc-950/50 border-zinc-800/50 text-zinc-700 cursor-not-allowed opacity-50'
+                      : visitsMet 
+                        ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' 
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
                   }`}
                 >
-                  <span className="font-medium text-sm">Atingiu a meta de visitas?</span>
-                  {visitsMet ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                  <span className="font-medium text-sm">
+                    {visitsMet && visitsEligible ? 'Meta de visitas atingida' : 'Atingiu a meta de visitas?'}
+                  </span>
+                  {visitsMet && visitsEligible ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5 opacity-30" />}
                 </button>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Meta Financeira (75%)</label>
+                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Meta Financeira Trimestre (75%)</label>
                 <div className="relative">
                   <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <NumericFormat
@@ -171,7 +195,7 @@ export default function App() {
               </div>
               
               <div className="space-y-2">
-                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Realizado Financeiro</label>
+                <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider block">Realizado Financeiro Trimestre</label>
                 <div className="relative">
                   <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <NumericFormat
@@ -271,7 +295,11 @@ export default function App() {
 
                       <div className="text-[10px] text-zinc-600 mt-2 italic space-y-1">
                         <p>Base: {formatCurrency(baseSalary)} × {multiples.quarterly}x</p>
-                        <p>Composição: {visitsMet ? "25% Visitas" : "0% Visitas"} + {((actual/goal)*75).toFixed(1)}% Financeiro</p>
+                        <p>
+                          Composição: {(financialAttainmentPercent * 100).toFixed(1)}% Financeiro
+                          {(visitsMet && visitsEligible) ? " + 25,0% Visitas" : ""}
+                          {!visitsEligible && visitsMet && " (Bônus Visitas Bloqueado: Fin. < 75%)"}
+                        </p>
                       </div>
                     </div>
                   </div>
