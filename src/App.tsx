@@ -26,13 +26,14 @@ export default function App() {
   const [visitsMet, setVisitsMet] = useState<boolean>(false);
 
   const attainment = useMemo(() => {
-    const financialAttainment = goal > 0 ? (actual / goal) : 0;
+    const financialAttainmentPercent = goal > 0 ? (actual / goal) : 0;
+    const financialWeight = financialAttainmentPercent * 0.75;
     
     // Rule: Visits only count if financial attainment >= 75%
-    const visitsEligible = financialAttainment >= 0.75;
+    const visitsEligible = financialAttainmentPercent >= 0.75;
     const visitsWeight = (visitsEligible && visitsMet) ? 0.25 : 0;
     
-    return financialAttainment + visitsWeight;
+    return financialWeight + visitsWeight;
   }, [goal, actual, visitsMet]);
 
   const financialAttainmentPercent = useMemo(() => {
@@ -112,7 +113,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="font-bold text-lg tracking-tight">Calculadora de Metas Trimestral</h1>
-              <p className="text-xs text-zinc-500 font-mono uppercase tracking-wider">Performance Engine v1.3</p>
+              <p className="text-xs text-zinc-500 font-mono uppercase tracking-wider">Performance Engine v1.8</p>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-6 text-xs font-mono text-zinc-500 uppercase tracking-widest">
@@ -210,6 +211,38 @@ export default function App() {
                   />
                 </div>
               </div>
+
+              {/* Calculation Rationale */}
+              <div className="md:col-span-2 mt-4 p-4 bg-zinc-950/50 border border-zinc-800/50 rounded-xl">
+                <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Calculator className="w-3 h-3" /> Racional do Cálculo
+                </h3>
+                <div className="flex flex-wrap items-center gap-2 text-sm font-mono">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-zinc-500 uppercase mb-1">Batimento Financeiro</span>
+                    <span className="text-zinc-300">({(financialAttainmentPercent * 100).toFixed(1)}% × 0,75)</span>
+                  </div>
+                  <span className="text-zinc-600 self-end mb-1">+</span>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-zinc-500 uppercase mb-1">Bônus Visitas</span>
+                    <span className={visitsEligible && visitsMet ? "text-emerald-400" : "text-zinc-600"}>
+                      {visitsEligible && visitsMet ? "25,0%" : "0,0%"}
+                    </span>
+                  </div>
+                  <span className="text-zinc-600 self-end mb-1">=</span>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-emerald-500 uppercase mb-1">Score Final</span>
+                    <span className="text-xl font-bold text-emerald-400">
+                      {(attainment * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+                {!visitsEligible && visitsMet && (
+                  <p className="text-[10px] text-red-500/80 mt-2 italic flex items-center gap-1">
+                    <XCircle className="w-3 h-3" /> O bônus de visitas foi ignorado pois o batimento financeiro está abaixo de 75%.
+                  </p>
+                )}
+              </div>
             </div>
           </section>
 
@@ -296,9 +329,9 @@ export default function App() {
                       <div className="text-[10px] text-zinc-600 mt-2 italic space-y-1">
                         <p>Base: {formatCurrency(baseSalary)} × {multiples.quarterly}x</p>
                         <p>
-                          Composição: {(financialAttainmentPercent * 100).toFixed(1)}% Financeiro
-                          {(visitsMet && visitsEligible) ? " + 25,0% Visitas" : ""}
-                          {!visitsEligible && visitsMet && " (Bônus Visitas Bloqueado: Fin. < 75%)"}
+                          Composição: {(financialAttainmentPercent * 75).toFixed(1)}% Financeiro (Peso 75%)
+                          {visitsEligible && visitsMet ? " + 25,0% Visitas (Peso 25%)" : " + 0% Visitas"}
+                          {!visitsEligible && visitsMet && " (Bônus bloqueado: Fin. < 75%)"}
                         </p>
                       </div>
                     </div>
